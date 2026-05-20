@@ -1,0 +1,18 @@
+{
+  "name": "sir-velorians-last-stand",
+  "productName": "Sir Velorians Last Stand",
+  "version": "1.0.0",
+  "description": "A bullet-heaven tribute to Vampire Survivors, built in Phaser 3.",
+  "main": "electron-main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "serve": "node server.js",
+    "serve:headless": "node server.js --no-open",
+    "build:win": "node build/build-win.cjs"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-packager": "^17.1.2"
+  }
+}

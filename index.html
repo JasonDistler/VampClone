@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sir Velorian's Last Stand</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="game-container">
+        <div id="game"></div>
+
+        <div id="damage-numbers"></div>
+
+        <div id="low-hp-vignette" class="hidden"></div>
+
+        <div id="achievement-toast" class="hidden">
+            <div class="ach-icon" id="ach-icon">★</div>
+            <div class="ach-text">
+                <div class="ach-eyebrow">ACHIEVEMENT UNLOCKED</div>
+                <div class="ach-name" id="ach-name">—</div>
+            </div>
+        </div>
+
+        <div id="stats-panel" class="hidden">
+            <div class="stats-title">RUN STATS</div>
+            <div class="stats-rows" id="stats-rows"></div>
+            <div class="stats-hint">Hold Tab</div>
+        </div>
+
+        <div id="tutorial-overlay" class="hidden">
+            <div class="tutorial-card">
+                <div class="tutorial-eyebrow">QUICK PRIMER</div>
+                <ul class="tutorial-list">
+                    <li><span class="tut-key">WASD</span> or arrows - move (gamepad: left stick)</li>
+                    <li>Weapons swing automatically. Just stay alive.</li>
+                    <li>Walk over <span class="tut-gem">XP gems</span> and <span class="tut-heart">hearts</span>. Hearts only heal when wounded.</li>
+                    <li>Each level up gives 3 upgrades. Pick wisely - some unlock new weapons.</li>
+                    <li>Bosses spawn at 2:00 / 5:00 / 10:00 / 15:00. Be ready.</li>
+                </ul>
+                <button class="tutorial-close" id="btn-tutorial-close">GOT IT</button>
+            </div>
+        </div>
+
+        <div id="boss-banner" class="hidden">
+            <div class="boss-banner-eyebrow">A POWERFUL FOE APPROACHES</div>
+            <div class="boss-banner-name" id="boss-banner-name">UNKNOWN</div>
+        </div>
+
+        <div id="boss-hp" class="hidden">
+            <div class="boss-hp-name" id="boss-hp-name">BOSS</div>
+            <div class="boss-hp-track">
+                <div class="boss-hp-fill" id="boss-hp-fill"></div>
+            </div>
+        </div>
+
+        <div id="main-menu" class="menu-screen hidden">
+            <div class="menu-frame">
+                <h1 class="menu-title">SIR VELORIAN'S LAST STAND</h1>
+                <p class="menu-tagline">A bullet-heaven tribute to Vampire Survivors</p>
+                <div class="menu-buttons">
+                    <button class="menu-btn primary" id="btn-start">START GAME</button>
+                    <button class="menu-btn" id="btn-meta">UPGRADES</button>
+                    <button class="menu-btn" id="btn-settings">SETTINGS</button>
+                </div>
+                <div class="meta-summary" id="meta-summary"></div>
+                <p class="menu-footer">
+                    <span class="kbd-only">WASD / Arrow Keys to move &mdash; weapons swing automatically</span>
+                    <span class="gp-only">Controller connected &mdash; <span class="gp-glyph" data-glyph="lstick"></span> to move &middot; <span class="gp-glyph" data-glyph="confirm"></span> to confirm &middot; weapons swing automatically</span>
+                </p>
+            </div>
+        </div>
+
+        <div id="char-select" class="menu-screen hidden">
+            <div class="menu-frame char-frame">
+                <h2 class="menu-title">CHOOSE YOUR HERO</h2>
+                <p class="menu-tagline">Each champion wields a unique starting weapon</p>
+                <div class="char-grid" id="char-grid"></div>
+                <div class="run-modes">
+                    <label class="run-toggle">
+                        <input type="checkbox" id="opt-daily" />
+                        <span>Daily Seeded Run</span>
+                        <span class="run-hint" id="daily-hint">Today's seed</span>
+                    </label>
+                    <div class="curse-row">
+                        <span class="curse-label">CURSES <small>(harder; bigger reward)</small>:</span>
+                        <div class="curse-options" id="curse-options"></div>
+                    </div>
+                </div>
+                <div class="char-actions">
+                    <button class="menu-btn ghost" id="btn-char-back">&laquo; BACK</button>
+                    <button class="menu-btn primary" id="btn-char-confirm" disabled>BEGIN RUN &raquo;</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="meta-modal" class="modal hidden">
+            <div class="modal-inner meta-modal-inner">
+                <h2 class="modal-title">PERMANENT UPGRADES</h2>
+                <p class="modal-subtitle">Spend gold earned across runs to unlock lasting power</p>
+                <div class="meta-gold-display">Gold: <span id="meta-gold-amount">0</span></div>
+                <div class="meta-grid" id="meta-grid"></div>
+                <h3 class="meta-section-title">ACHIEVEMENTS</h3>
+                <div class="meta-ach-grid" id="meta-ach-grid"></div>
+                <button class="restart-btn" id="btn-meta-close">CLOSE</button>
+            </div>
+        </div>
+
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-inner">
+                <h2 class="modal-title">SETTINGS</h2>
+                <p class="modal-subtitle">Tune the run before you begin</p>
+
+                <div class="settings-section">
+                    <label class="settings-label">Difficulty</label>
+                    <div class="seg-control" id="diff-control">
+                        <button data-value="easy">Easy</button>
+                        <button data-value="normal" class="active">Normal</button>
+                        <button data-value="hard">Hard</button>
+                    </div>
+                    <p class="settings-hint" id="diff-hint">Standard spawn rate and damage.</p>
+                </div>
+
+                <div class="settings-section">
+                    <label class="settings-label">Graphics</label>
+                    <div class="seg-control" id="gfx-control">
+                        <button data-value="pixel" class="active">Pixel Art</button>
+                        <button data-value="hd">Smooth (HD)</button>
+                    </div>
+                    <p class="settings-hint" id="gfx-hint">Crisp retro pixel-art for characters and enemies.</p>
+                </div>
+
+                <div class="settings-section">
+                    <label class="settings-label">Game Feel</label>
+                    <div class="toggle-row">
+                        <label class="toggle"><input type="checkbox" id="opt-shake" checked /><span>Screen Shake</span></label>
+                        <label class="toggle"><input type="checkbox" id="opt-blur-pause" checked /><span>Auto-Pause When Window Loses Focus</span></label>
+                        <label class="toggle"><input type="checkbox" id="opt-dmg-numbers" checked /><span>Damage Numbers</span></label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <label class="settings-label">Audio</label>
+                    <div class="vol-row">
+                        <label class="vol-slider">
+                            <span class="vol-label">Master</span>
+                            <input type="range" id="vol-master" min="0" max="100" value="70" />
+                            <span class="vol-value" id="vol-master-value">70%</span>
+                        </label>
+                        <label class="vol-slider">
+                            <span class="vol-label">Music</span>
+                            <input type="range" id="vol-music" min="0" max="100" value="50" />
+                            <span class="vol-value" id="vol-music-value">50%</span>
+                        </label>
+                        <label class="vol-slider">
+                            <span class="vol-label">Effects</span>
+                            <input type="range" id="vol-sfx" min="0" max="100" value="70" />
+                            <span class="vol-value" id="vol-sfx-value">70%</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <label class="settings-label">Controls</label>
+                    <ul class="controls-list">
+                        <li>
+                            <span class="kbd-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span>
+                            <span class="gp-only"><span class="gp-glyph" data-glyph="lstick"></span> or D-Pad <span class="gp-glyph" data-glyph="dpad-up"></span><span class="gp-glyph" data-glyph="dpad-down"></span><span class="gp-glyph" data-glyph="dpad-left"></span><span class="gp-glyph" data-glyph="dpad-right"></span></span>
+                            &mdash; move
+                        </li>
+                        <li>
+                            <span class="kbd-only"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span>
+                            <span class="gp-only">D-Pad <span class="gp-glyph" data-glyph="dpad-left"></span><span class="gp-glyph" data-glyph="dpad-right"></span> + <span class="gp-glyph" data-glyph="confirm"></span></span>
+                            &mdash; pick a level-up card
+                        </li>
+                        <li>
+                            <span class="kbd-only"><kbd>Esc</kbd> / <kbd>P</kbd> / <kbd>Enter</kbd></span>
+                            <span class="gp-only"><span class="gp-glyph" data-glyph="menu"></span></span>
+                            &mdash; pause / resume
+                        </li>
+                        <li>
+                            <span class="kbd-only"><kbd>Space</kbd> / <kbd>R</kbd></span>
+                            <span class="gp-only"><span class="gp-glyph" data-glyph="confirm"></span></span>
+                            &mdash; restart on Game Over
+                        </li>
+                    </ul>
+                </div>
+
+                <button class="restart-btn" id="btn-settings-close">CLOSE</button>
+            </div>
+        </div>
+
+        <div id="intro-callout" class="hidden">
+            <div class="intro-inner">
+                <p class="intro-eyebrow" id="intro-eyebrow">ENTER THE FRAY</p>
+                <h2 class="intro-name" id="intro-name">SIR VELORIAN</h2>
+                <p class="intro-weapon" id="intro-weapon">Lion's Bane</p>
+            </div>
+        </div>
+
+        <div id="hud" class="hidden">
+            <div id="hud-top">
+                <div class="hud-cluster" id="hp-cluster">
+                    <span class="icon icon-heart">&#9829;</span>
+                    <div class="bar-track hp-track">
+                        <div class="bar-fill hp-fill" id="hp-fill"></div>
+                        <span class="bar-label" id="hp-text">100 / 100</span>
+                    </div>
+                </div>
+                <div class="hud-cluster" id="timer-cluster">
+                    <span class="icon icon-hourglass">&#8987;</span>
+                    <span id="timer-text">00:00</span>
+                </div>
+                <div class="hud-cluster" id="kills-cluster">
+                    <span class="icon icon-skull">&#9760;</span>
+                    <span id="kills-text">0</span>
+                </div>
+            </div>
+
+            <div id="hud-bottom">
+                <span id="level-text">LV 1</span>
+                <div class="bar-track xp-track">
+                    <div class="bar-fill xp-fill" id="xp-fill"></div>
+                </div>
+                <span id="env-text"></span>
+            </div>
+        </div>
+
+        <div id="modal-pause" class="modal hidden">
+            <div class="modal-inner">
+                <h2 class="modal-title">PAUSED</h2>
+                <p class="modal-subtitle" id="pause-subtitle">Press <kbd>Esc</kbd> / <kbd>P</kbd> / <kbd>Enter</kbd> to resume</p>
+                <div class="pause-buttons">
+                    <button class="restart-btn" id="btn-resume">RESUME</button>
+                    <button class="menu-btn ghost" id="btn-pause-settings">SETTINGS</button>
+                    <button class="menu-btn ghost" id="btn-pause-menu">MAIN MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-levelup" class="modal hidden">
+            <div class="modal-inner">
+                <h2 class="modal-title">LEVEL UP!</h2>
+                <p class="modal-subtitle" id="levelup-subtitle">LEVEL 1 &mdash; Power-Up Range: 2-5%</p>
+                <div class="card-row" id="levelup-cards"></div>
+                <p class="modal-hint">
+                    <span class="kbd-only">Click a card &mdash; or press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></span>
+                    <span class="gp-only">D-Pad <span class="gp-glyph" data-glyph="dpad-left"></span><span class="gp-glyph" data-glyph="dpad-right"></span> to navigate &middot; <span class="gp-glyph" data-glyph="confirm"></span> to confirm</span>
+                </p>
+            </div>
+        </div>
+
+        <div id="modal-gameover" class="modal hidden">
+            <div class="modal-inner">
+                <h2 class="modal-title death-title">YOU DIED</h2>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <span class="stat-label">Survived</span>
+                        <span class="stat-value" id="go-time">00:00</span>
+                        <span class="stat-best-badge hidden" id="go-time-badge">NEW BEST</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Level</span>
+                        <span class="stat-value" id="go-level">1</span>
+                        <span class="stat-best-badge hidden" id="go-level-badge">NEW BEST</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Kills</span>
+                        <span class="stat-value" id="go-kills">0</span>
+                        <span class="stat-best-badge hidden" id="go-kills-badge">NEW BEST</span>
+                    </div>
+                </div>
+                <p class="best-summary" id="go-best-summary"></p>
+                <button class="restart-btn" id="restart-btn">RESTART</button>
+                <p class="modal-hint">
+                    <span class="kbd-only">Click RESTART &mdash; or press <kbd>Space</kbd> / <kbd>R</kbd></span>
+                    <span class="gp-only"><span class="gp-glyph" data-glyph="confirm"></span> to restart &middot; <span class="gp-glyph" data-glyph="cancel"></span> for main menu</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!--
+        Phaser is bundled locally under vendor/ so the desktop builds
+        (Electron-packaged Windows .exe + the macOS WKWebView app) work
+        offline. Web hosting can simply use the same path; the file
+        size is ~1.2 MB minified.
+    -->
+    <script src="vendor/phaser.min.js"></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
