@@ -11,6 +11,7 @@
 import { CHARACTERS, CHARACTER_ORDER } from '../characters/Characters.js';
 import { settings } from '../systems/Settings.js';
 import { graphicsMode } from '../systems/GraphicsMode.js';
+import { viewAngle } from '../systems/ViewAngle.js';
 import { bestRuns, formatDuration } from '../systems/BestRuns.js';
 import { gamepad, GP } from '../systems/Gamepad.js';
 import { audio } from '../systems/AudioSystem.js';
@@ -54,6 +55,11 @@ const DIFFICULTY_HINTS = {
 const GRAPHICS_HINTS = {
     pixel: 'Crisp retro pixel-art for characters and enemies.',
     hd: 'Bilinear-smoothed sprites - characters and enemies look like HD art.'
+};
+
+const VIEW_HINTS = {
+    topdown: 'Camera looks straight down at the play field.',
+    tilted: '3/4 oblique view - the world tilts away into the distance.'
 };
 
 class HudOverlay {
@@ -124,6 +130,8 @@ class HudOverlay {
         this.diffHint = document.getElementById('diff-hint');
         this.gfxControl = document.getElementById('gfx-control');
         this.gfxHint = document.getElementById('gfx-hint');
+        this.viewControl = document.getElementById('view-control');
+        this.viewHint = document.getElementById('view-hint');
         this.btnSettingsClose = document.getElementById('btn-settings-close');
         this.optShake = document.getElementById('opt-shake');
         this.optBlurPause = document.getElementById('opt-blur-pause');
@@ -838,6 +846,20 @@ class HudOverlay {
                     this.gfxControl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
                     if (this.gfxHint) this.gfxHint.textContent = GRAPHICS_HINTS[v] || '';
                     graphicsMode.set(v);
+                });
+            });
+        }
+
+        if (this.viewControl) {
+            const initialView = settings.viewAngle;
+            this.viewControl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.value === initialView));
+            if (this.viewHint) this.viewHint.textContent = VIEW_HINTS[initialView];
+            this.viewControl.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const v = btn.dataset.value;
+                    this.viewControl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+                    if (this.viewHint) this.viewHint.textContent = VIEW_HINTS[v] || '';
+                    viewAngle.set(v);
                 });
             });
         }

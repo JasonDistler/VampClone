@@ -9,6 +9,7 @@ import { pauseManager } from './systems/PauseManager.js';
 import { hudOverlay } from './ui/HudOverlay.js';
 import { gamepad, GP } from './systems/Gamepad.js';
 import { graphicsMode } from './systems/GraphicsMode.js';
+import { viewAngle } from './systems/ViewAngle.js';
 import { audio } from './systems/AudioSystem.js';
 
 export const GAME_WIDTH = 480;
@@ -43,8 +44,12 @@ window.addEventListener('load', () => {
      * Stamp the graphics mode onto <body> immediately so the canvas's
      * image-rendering CSS rule resolves correctly on its very first paint
      * (no flash of pixelated frames before HD users get their smoothing).
+     * Same story for the view-angle attribute: stamp it before Phaser
+     * paints so a player who has the 3/4 view enabled doesn't see a
+     * single top-down frame on every reload.
      */
     graphicsMode.applyToBody();
+    viewAngle.applyToBody();
 
     /*
      * Install audio: registers one-shot listeners that lazy-create the

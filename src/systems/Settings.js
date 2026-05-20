@@ -18,6 +18,15 @@ const DEFAULTS = {
      */
     graphicsMode: 'pixel',
     /*
+     * 'topdown' = camera looks straight down (the original view).
+     * 'tilted'  = the world canvas gets a CSS perspective + rotateX so
+     *             you see the floor receding into the distance — the
+     *             classic "3/4" or oblique top-down look. Pure CSS
+     *             transform; no gameplay or physics changes. HUD,
+     *             menus, and modals stay flat for readability.
+     */
+    viewAngle: 'topdown',
+    /*
      * Audio bus volumes, all 0..1. Master multiplies music & sfx; each
      * sub-bus also has its own slider in the settings modal so a player
      * can keep ambient music quiet while SFX punch through.
@@ -58,6 +67,7 @@ export const settings = (() => {
         get autoPauseOnBlur() { return state.autoPauseOnBlur; },
         get damageNumbers() { return state.damageNumbers; },
         get graphicsMode() { return state.graphicsMode === 'hd' ? 'hd' : 'pixel'; },
+        get viewAngle()    { return state.viewAngle    === 'tilted' ? 'tilted' : 'topdown'; },
         get masterVolume() { return clamp01(state.masterVolume, 0.7); },
         get musicVolume() { return clamp01(state.musicVolume, 0.5); },
         get sfxVolume() { return clamp01(state.sfxVolume, 0.7); },

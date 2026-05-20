@@ -92,9 +92,43 @@ export class DamageNumbers {
     update(time) {
         if (this.active.length === 0) return;
         const cam = this.scene.cameras.main;
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = rect.width / GAME_WIDTH;
-        const scaleY = rect.height / GAME_HEIGHT;
+        const canvas = this.canvas;
+
+        /*
+         * Compute scale and origin in the canvas's *layout* box, NOT its
+         * post-transform getBoundingClientRect. When the 3/4 view-angle
+         * setting is on, `#game canvas` has a CSS perspective+rotateX
+         * transform and getBoundingClientRect returns the AABB of the
+         * resulting trapezoid — the wrong values for both the scale and
+         * the screen anchor.
+         *
+         *  - clientWidth/Height: layout dimensions, untransformed.
+         *  - canvas.parentElement is `#game`, which is never transformed,
+         *    so its bbox gives the canvas's true layout position in
+         *    viewport coords.
+         *
+         * The `#damage-numbers` container has the *same* transform
+         * applied (see style.css), so positions computed in flat layout
+         * space get tilted into visual alignment by the GPU along with
+         * the canvas itself.
+         */
+        const cw = canvas.clientWidth || GAME_WIDTH;
+        const ch = canvas.clientHeight || GAME_HEIGHT;
+        const scaleX = cw / GAME_WIDTH;
+        const scaleY = ch / GAME_HEIGHT;
+
+        let leftAnchor;
+        let topAnchor;
+        const parent = canvas.parentElement;
+        if (parent) {
+            const pr = parent.getBoundingClientRect();
+            leftAnchor = pr.left + (canvas.offsetLeft || 0);
+            topAnchor = pr.top + (canvas.offsetTop || 0);
+        } else {
+            const r = canvas.getBoundingClientRect();
+            leftAnchor = r.left;
+            topAnchor = r.top;
+        }
 
         for (let i = this.active.length - 1; i >= 0; i--) {
             const n = this.active[i];
@@ -107,8 +141,8 @@ export class DamageNumbers {
             // Float upward in world units so it stays above the enemy as
             // the camera scrolls.
             const worldY = n.y0 - n.floatPx * t;
-            const screenX = (n.x0 - cam.scrollX) * scaleX + rect.left;
-            const screenY = (worldY - cam.scrollY) * scaleY + rect.top;
+            const screenX = (n.x0 - cam.scrollX) * scaleX + leftAnchor;
+            const screenY = (worldY - cam.scrollY) * scaleY + topAnchor;
             n.el.style.left = screenX + 'px';
             n.el.style.top = screenY + 'px';
             // Quadratic ease-out fade.
