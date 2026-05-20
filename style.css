@@ -56,6 +56,45 @@ body[data-graphics="hd"] #game canvas {
     image-rendering: -webkit-optimize-contrast;
 }
 
+/*
+ *  3/4 (tilted) view angle.
+ *
+ *  Pure CSS transform applied to the Phaser canvas and the floating
+ *  damage-numbers overlay so they stay registered. Everything else —
+ *  HUD, modals, menus, toasts — keeps rendering flat in screen space
+ *  for readability. The same `transform-origin` is used on both elements
+ *  so a point in canvas-internal coords maps to the same visual position
+ *  in the damage-numbers overlay (the JS math computes positions in the
+ *  canvas's untransformed layout box; the GPU then tilts both layers by
+ *  the same matrix).
+ *
+ *  Picked numbers:
+ *    - perspective(1400px): far enough that the trapezoid feels tilted
+ *      but not so close that the front edge balloons. 1400 corresponds to
+ *      about a 45° vertical FOV at 720p.
+ *    - rotateX(26deg): strong enough that floors clearly recede; gentle
+ *      enough that distant enemies don't shrink into illegibility.
+ *    - transform-origin: 50% 60%: pivots around a point slightly below
+ *      center so the bottom of the play field stays roughly where it was
+ *      and the top of the field tilts away into the distance.
+ *
+ *  `will-change: transform` hints the GPU to keep the canvas on its own
+ *  compositor layer, which avoids pixel-shimmer during camera shake on
+ *  Chromium/Electron.
+ */
+body[data-view="tilted"] #game canvas,
+body[data-view="tilted"] #damage-numbers {
+    transform: perspective(1400px) rotateX(26deg);
+    transform-origin: 50% 60%;
+    will-change: transform;
+}
+body[data-view="tilted"] #game canvas {
+    /* Slightly punch up the contrast at the back of the trapezoid so
+     * distant enemies don't get visually washed out by the tilt's
+     * perspective foreshortening. Subtle — clamp at 1.05 / 0.97. */
+    filter: contrast(1.05) saturate(0.97);
+}
+
 /* =========================================================
  *  MENU SCREENS (main menu, character select)
  * ========================================================= */
@@ -83,10 +122,37 @@ body[data-graphics="hd"] #game canvas {
     text-align: center;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 60px rgba(245, 197, 75, 0.18);
     animation: popIn 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Cap the frame to viewport and let the body scroll if there's
+     * more content than fits. Without this, the character-select
+     * frame (4-6 cards + run-mode toggles + curse list + action
+     * buttons) extended past the bottom of the screen on shorter
+     * laptop viewports and the BEGIN RUN button became unreachable. */
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .char-frame {
     width: min(95vw, 1080px);
+}
+
+/* Gold-themed scrollbar shared with .modal-inner so menus and modals
+ * have a consistent look when their bodies overflow. */
+.menu-frame::-webkit-scrollbar { width: 10px; }
+.menu-frame::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 5px;
+}
+.menu-frame::-webkit-scrollbar-thumb {
+    background: rgba(245, 197, 75, 0.35);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+.menu-frame::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 197, 75, 0.55);
+    background-clip: padding-box;
+    border: 2px solid transparent;
 }
 
 .menu-title {
@@ -365,6 +431,23 @@ body[data-graphics="hd"] #game canvas {
     align-items: center;
     gap: 12px;
     margin-top: 4px;
+    /* Pin the BACK / BEGIN RUN buttons to the bottom of the scrolling
+     * char-select frame so they remain reachable while the player
+     * scrolls through the character grid. Negative horizontal margins
+     * extend the bar across the frame's full inner width; the matching
+     * padding re-creates the original inset. The gradient backdrop
+     * obscures any character cards that might otherwise be visible
+     * scrolling under the buttons. */
+    position: sticky;
+    bottom: 0;
+    margin-left: -44px;
+    margin-right: -44px;
+    padding: 12px 44px 4px;
+    background: linear-gradient(180deg,
+        rgba(26, 18, 40, 0) 0%,
+        rgba(26, 18, 40, 0.92) 30%,
+        rgba(26, 18, 40, 1) 60%);
+    z-index: 1;
 }
 
 /* =========================================================
