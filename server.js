@@ -25,6 +25,7 @@
 
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
@@ -84,7 +85,7 @@ const PREFERRED_PORTS = [8765, 8766, 8767, 8768, 8769, 8770, 8771, 8772, 8773, 8
  * Falls through to port 0 (OS-picked ephemeral) if every preferred
  * port is occupied, so the launcher always succeeds.
  */
-function probePort(port) {
+function probePort(port, host) {
     return new Promise((resolve) => {
         const probe = http.createServer();
         probe.once('error', err => {
@@ -97,20 +98,66 @@ function probePort(port) {
                 resolve(false);
             }
         });
-        probe.listen(port, '127.0.0.1', () => {
+        probe.listen(port, host, () => {
             probe.close(() => resolve(true));
         });
     });
 }
 
-async function findFreePort() {
+async function findFreePort(host) {
     for (const p of PREFERRED_PORTS) {
-        const free = await probePort(p);
+        const free = await probePort(p, host);
         if (free) return p;
     }
     /* Nothing in our preferred range was free. Hand the choice to the
      * OS — port 0 means "give me any free port". */
     return 0;
+}
+
+/*
+ * Enumerate the host's IPv4 LAN addresses so we can print URLs other
+ * devices can use to reach the server. Skips:
+ *   - loopback (127.0.0.1) — printed separately as `localhost`
+ *   - link-local (169.254.x.x) — auto-config addresses; not routable
+ *   - IPv6 — most casual users won't recognize the format, and the
+ *     IPv4 address is always sufficient on a home network
+ *   - virtual interfaces (utun*, vEthernet*) typically don't matter
+ *     for "play this on my phone" use cases, but we don't filter by
+ *     name because some valid LAN interfaces also use those prefixes
+ *     on macOS — we just trust the OS's `internal` flag.
+ *
+ * Returns the most-likely-correct address first (assumes Wi-Fi /
+ * Ethernet IPs in the 192.168.x.x or 10.x.x.x ranges are what most
+ * users want; everything else is appended after).
+ */
+function listLanIps() {
+    const interesting = [];
+    const others = [];
+    let ifaces;
+    /*
+     * `os.networkInterfaces()` can throw on sandboxed/locked-down hosts
+     * (some CI runners, agent environments, kiosk mode). Treat any
+     * failure as "no LAN addresses" rather than crashing the server —
+     * the user can still play locally via http://localhost.
+     */
+    try {
+        ifaces = os.networkInterfaces();
+    } catch (err) {
+        return [];
+    }
+    for (const name of Object.keys(ifaces)) {
+        for (const addr of ifaces[name] || []) {
+            if (addr.family !== 'IPv4' && addr.family !== 4) continue;
+            if (addr.internal) continue;
+            if (addr.address.startsWith('169.254.')) continue;
+            const isHomeNet =
+                addr.address.startsWith('192.168.') ||
+                addr.address.startsWith('10.') ||
+                /^172\.(1[6-9]|2\d|3[01])\./.test(addr.address);
+            (isHomeNet ? interesting : others).push({ name, address: addr.address });
+        }
+    }
+    return [...interesting, ...others];
 }
 
 /*
@@ -173,8 +220,18 @@ function openInBrowser(url) {
 
 const args = process.argv.slice(2);
 const noOpen = args.includes('--no-open');
+/*
+ * `--localhost` (or `--local-only`) restricts the server to the loopback
+ * interface only — useful when you're on an untrusted network (coffee
+ * shop, hotel) and don't want anyone else able to load the game from
+ * your machine. Default behavior binds to all interfaces (0.0.0.0) so
+ * other devices on your LAN — phones, tablets, a second laptop — can
+ * load the game directly by typing in the host computer's LAN IP.
+ */
+const localhostOnly = args.includes('--localhost') || args.includes('--local-only');
+const HOST = localhostOnly ? '127.0.0.1' : '0.0.0.0';
 
-const port = await findFreePort();
+const port = await findFreePort(HOST);
 
 const server = http.createServer(serve);
 
@@ -183,9 +240,9 @@ server.on('error', err => {
     process.exit(1);
 });
 
-server.listen(port, '127.0.0.1', () => {
+server.listen(port, HOST, () => {
     const actual = server.address().port;
-    const url = `http://localhost:${actual}/`;
+    const localUrl = `http://localhost:${actual}/`;
     const fallbackNote = port === 0
         ? ' (preferred 8765-8775 were busy; using OS-picked port)'
         : '';
@@ -193,11 +250,25 @@ server.listen(port, '127.0.0.1', () => {
     console.log('  Sir Velorian\'s Last Stand — dev server');
     console.log('  ' + '\u2500'.repeat(40));
     console.log(`  Serving:  ${ROOT}`);
-    console.log(`  URL:      ${url}${fallbackNote}`);
+    console.log(`  Local:    ${localUrl}${fallbackNote}`);
+    if (!localhostOnly) {
+        const lan = listLanIps();
+        if (lan.length === 0) {
+            console.log('  Network:  (no LAN IPv4 addresses detected — likely offline)');
+        } else {
+            for (let i = 0; i < lan.length; i++) {
+                const label = i === 0 ? 'Network:' : '        ';
+                console.log(`  ${label}  http://${lan[i].address}:${actual}/  (${lan[i].name})`);
+            }
+            console.log('            ^ open these on phones / tablets / other PCs on the same Wi-Fi.');
+        }
+    } else {
+        console.log('  Network:  disabled (--localhost flag)');
+    }
     console.log('');
     console.log('  Press Ctrl-C to stop.');
     console.log('');
-    if (!noOpen) openInBrowser(url);
+    if (!noOpen) openInBrowser(localUrl);
 });
 
 /*

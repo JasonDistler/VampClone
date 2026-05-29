@@ -1,6 +1,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from '../main.js';
 import { hudOverlay } from '../ui/HudOverlay.js';
 import { audio } from '../systems/AudioSystem.js';
+import { crawlerUI } from '../crawler/CrawlerUI.js';
 import {
     REGISTRY_CHARACTER_KEY,
     REGISTRY_DIFFICULTY_KEY,
@@ -31,7 +32,8 @@ export class MainMenuScene extends Phaser.Scene {
 
         hudOverlay.hideHud();
         hudOverlay.showMainMenu({
-            onStart: () => this.openCharSelect()
+            onStart: () => this.openCharSelect(),
+            onCrawler: () => this.openCrawler()
         });
 
         // First-run tutorial: pop the overlay only the very first time
@@ -87,8 +89,31 @@ export class MainMenuScene extends Phaser.Scene {
 
     openCharSelect() {
         hudOverlay.showCharSelect(this.portraits, {
-            onBack: () => hudOverlay.showMainMenu({ onStart: () => this.openCharSelect() }),
+            onBack: () => hudOverlay.showMainMenu({
+                onStart: () => this.openCharSelect(),
+                onCrawler: () => this.openCrawler()
+            }),
             onConfirm: (characterId, runOpts) => this.startRun(characterId, runOpts)
+        });
+    }
+
+    /*
+     * Crawler Mode entry. The mode is a fully DOM-driven turn-based
+     * deckbuilder that lives parallel to the real-time game; it never
+     * touches the Phaser scenes. We hide the main menu while it's open
+     * and restore the main menu when the player quits / dies / wins.
+     *
+     * Character selection (and the optional Daily Run toggle) happens
+     * inside the crawler shell on its own #crawler-charselect stage, so
+     * the entry call is purely "start the shell, restore me on exit."
+     */
+    openCrawler() {
+        hudOverlay.hideMainMenu();
+        crawlerUI.start(() => {
+            hudOverlay.showMainMenu({
+                onStart: () => this.openCharSelect(),
+                onCrawler: () => this.openCrawler()
+            });
         });
     }
 

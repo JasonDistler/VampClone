@@ -63,6 +63,7 @@
                 <p class="menu-tagline">A bullet-heaven tribute to Vampire Survivors</p>
                 <div class="menu-buttons">
                     <button class="menu-btn primary" id="btn-start">START GAME</button>
+                    <button class="menu-btn" id="btn-crawler">CRAWLER MODE <small class="menu-btn-tag">BETA</small></button>
                     <button class="menu-btn" id="btn-meta">UPGRADES</button>
                     <button class="menu-btn" id="btn-settings">SETTINGS</button>
                 </div>
@@ -94,6 +95,218 @@
                     <button class="menu-btn ghost" id="btn-char-back">&laquo; BACK</button>
                     <button class="menu-btn primary" id="btn-char-confirm" disabled>BEGIN RUN &raquo;</button>
                 </div>
+            </div>
+        </div>
+
+        <div id="crawler-mode" class="hidden" data-biome="entry">
+            <!--
+                Crawler Mode shell. Fully DOM-driven; the Phaser canvas
+                stays untouched in the background while this overlay is
+                visible. CrawlerUI.js renders the inner content of each
+                stage panel (combat, reward, prefight, victory, defeat)
+                from the engine state every frame.
+
+                The data-biome attribute is set by CrawlerUI as fights
+                are entered (forest / crypt / sanctum / throne / entry)
+                and drives the parallax background + particle palette
+                through pure CSS, so the JS layer never has to touch
+                the visual ambience directly.
+            -->
+            <div class="crawler-bg" aria-hidden="true">
+                <div class="crawler-bg-far"></div>
+                <div class="crawler-bg-mid"></div>
+                <div class="crawler-bg-near"></div>
+                <div class="crawler-bg-particles"></div>
+                <div class="crawler-bg-vignette"></div>
+            </div>
+            <div class="crawler-flash" id="crawler-flash" aria-hidden="true"></div>
+
+            <div class="crawler-topbar">
+                <div class="crawler-progress">
+                    <span class="crawler-floor-label" id="crawler-floor-label">FLOOR 1</span>
+                    <span class="crawler-fight-label" id="crawler-fight-label">Map</span>
+                </div>
+                <div class="crawler-vitals">
+                    <div class="crawler-vital">
+                        <span class="crawler-vital-label">HP</span>
+                        <span class="crawler-vital-value" id="crawler-hp-value">80 / 80</span>
+                    </div>
+                    <div class="crawler-vital">
+                        <span class="crawler-vital-label">Gold</span>
+                        <span class="crawler-vital-value" id="crawler-gold-value">0</span>
+                    </div>
+                </div>
+                <div class="crawler-relics" id="crawler-relics-strip" title="Relics"></div>
+                <div class="crawler-topbar-buttons">
+                    <button class="crawler-quit-btn" id="crawler-deck-btn">DECK</button>
+                    <button class="crawler-quit-btn" id="crawler-quit">QUIT</button>
+                </div>
+            </div>
+
+            <div id="crawler-charselect" class="crawler-stage hidden">
+                <div class="crawler-stage-card crawler-stage-card-wide">
+                    <h2 class="crawler-stage-title">CHOOSE YOUR HERO</h2>
+                    <p class="crawler-stage-sub">Each hero brings a unique starter deck</p>
+                    <div class="crawler-charselect-grid" id="crawler-charselect-grid"></div>
+                    <div class="crawler-charselect-actions">
+                        <label class="crawler-daily-toggle">
+                            <input type="checkbox" id="crawler-daily-checkbox">
+                            <span>Daily Seeded Run</span>
+                            <small id="crawler-daily-seed-label">today's challenge</small>
+                        </label>
+                    </div>
+                    <div class="crawler-stage-actions">
+                        <button class="crawler-secondary-btn" id="crawler-charselect-back">BACK</button>
+                        <button class="crawler-primary-btn" id="crawler-charselect-confirm" disabled>BEGIN RUN</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="crawler-map" class="crawler-stage hidden">
+                <div class="crawler-map-card">
+                    <h2 class="crawler-map-title" id="crawler-map-title">FLOOR 1</h2>
+                    <p class="crawler-map-sub">Choose your path forward</p>
+                    <div class="crawler-map-canvas-wrap">
+                        <svg class="crawler-map-svg" id="crawler-map-svg" preserveAspectRatio="none"></svg>
+                    </div>
+                    <div class="crawler-map-legend">
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">⚔</span> Fight</span>
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">⚔⚔</span> Pack</span>
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">☠</span> Elite</span>
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">🔥</span> Rest</span>
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">?</span> Reward</span>
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">$</span> Shop</span>
+                        <span class="crawler-map-legend-item"><span class="crawler-map-icon">👑</span> Boss</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="crawler-prefight" class="crawler-stage hidden">
+                <div class="crawler-stage-card">
+                    <h2 class="crawler-stage-title" id="crawler-prefight-title">FIGHT 1</h2>
+                    <p class="crawler-stage-sub" id="crawler-prefight-sub">A foe steps into the torchlight.</p>
+                    <div class="crawler-prefight-preview" id="crawler-prefight-preview"></div>
+                    <button class="crawler-primary-btn" id="crawler-begin-fight">BEGIN</button>
+                </div>
+            </div>
+
+            <div id="crawler-combat" class="crawler-stage hidden">
+                <div class="crawler-battlefield">
+                    <div class="crawler-enemies" id="crawler-enemies"></div>
+                    <div class="crawler-player-panel" id="crawler-player"></div>
+                </div>
+
+                <div class="crawler-resources">
+                    <div class="crawler-energy">
+                        <span class="crawler-energy-label">ENERGY</span>
+                        <span class="crawler-energy-value" id="crawler-energy-value">3 / 3</span>
+                    </div>
+                    <div class="crawler-pile-stats">
+                        <span>Deck <b id="crawler-draw-count">0</b></span>
+                        <span>Discard <b id="crawler-discard-count">0</b></span>
+                        <span>Exhaust <b id="crawler-exhaust-count">0</b></span>
+                    </div>
+                    <button class="crawler-end-turn" id="crawler-end-turn">END TURN</button>
+                </div>
+
+                <div class="crawler-hand" id="crawler-hand"></div>
+
+                <div class="crawler-log" id="crawler-log"></div>
+            </div>
+
+            <div id="crawler-reward" class="crawler-stage hidden">
+                <div class="crawler-stage-card">
+                    <h2 class="crawler-stage-title" id="crawler-reward-title">CHOOSE A REWARD</h2>
+                    <p class="crawler-stage-sub" id="crawler-reward-sub">Pick one card to add to your deck.</p>
+                    <div class="crawler-reward-cards" id="crawler-reward-cards"></div>
+                    <button class="crawler-secondary-btn" id="crawler-reward-skip">SKIP REWARD</button>
+                </div>
+            </div>
+
+            <div id="crawler-elite-reward" class="crawler-stage hidden">
+                <div class="crawler-stage-card crawler-stage-card-wide">
+                    <h2 class="crawler-stage-title crawler-title-gold">ELITE FELLED</h2>
+                    <p class="crawler-stage-sub">A relic gleams in the dust. Choose one to take.</p>
+                    <div class="crawler-relic-choices" id="crawler-elite-relic-choices"></div>
+                    <button class="crawler-secondary-btn" id="crawler-elite-relic-skip">SKIP RELIC</button>
+                </div>
+            </div>
+
+            <div id="crawler-rest" class="crawler-stage hidden">
+                <div class="crawler-stage-card crawler-stage-card-wide">
+                    <h2 class="crawler-stage-title">REST SITE</h2>
+                    <p class="crawler-stage-sub">A flickering torch. A moment's quiet.</p>
+                    <div class="crawler-rest-options">
+                        <button class="crawler-rest-option" id="crawler-rest-heal">
+                            <div class="crawler-rest-option-icon">♥</div>
+                            <div class="crawler-rest-option-name">HEAL</div>
+                            <div class="crawler-rest-option-desc">Recover 30% of max HP</div>
+                        </button>
+                        <button class="crawler-rest-option" id="crawler-rest-upgrade">
+                            <div class="crawler-rest-option-icon">✦</div>
+                            <div class="crawler-rest-option-name">UPGRADE</div>
+                            <div class="crawler-rest-option-desc">Permanently improve a card</div>
+                        </button>
+                    </div>
+                    <div id="crawler-upgrade-picker" class="crawler-upgrade-picker hidden">
+                        <h3 class="crawler-rest-section-title">Pick a card to upgrade</h3>
+                        <div class="crawler-upgrade-grid" id="crawler-upgrade-grid"></div>
+                        <button class="crawler-secondary-btn" id="crawler-upgrade-cancel">CANCEL</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="crawler-shop" class="crawler-stage hidden">
+                <div class="crawler-stage-card crawler-stage-card-wide">
+                    <h2 class="crawler-stage-title">TRAVELING MERCHANT</h2>
+                    <p class="crawler-stage-sub">Gold spent today is gold not spent on dying tomorrow.</p>
+                    <h3 class="crawler-rest-section-title">CARDS FOR SALE — 50g</h3>
+                    <div class="crawler-reward-cards" id="crawler-shop-cards"></div>
+                    <h3 class="crawler-rest-section-title">SERVICES</h3>
+                    <div class="crawler-rest-options">
+                        <button class="crawler-rest-option" id="crawler-shop-heal">
+                            <div class="crawler-rest-option-icon">♥</div>
+                            <div class="crawler-rest-option-name">HEAL — 40g</div>
+                            <div class="crawler-rest-option-desc">Recover 30% of max HP</div>
+                        </button>
+                        <button class="crawler-rest-option" id="crawler-shop-remove">
+                            <div class="crawler-rest-option-icon">✦</div>
+                            <div class="crawler-rest-option-name">REMOVE — 75g</div>
+                            <div class="crawler-rest-option-desc">Permanently remove a card from your deck</div>
+                        </button>
+                    </div>
+                    <div class="crawler-upgrade-grid" id="crawler-shop-remove-grid"></div>
+                    <div class="crawler-stage-actions">
+                        <button class="crawler-secondary-btn" id="crawler-shop-leave">LEAVE SHOP</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="crawler-summary" class="crawler-stage hidden">
+                <div class="crawler-stage-card crawler-stage-card-wide">
+                    <h2 class="crawler-stage-title" id="crawler-summary-title">RUN COMPLETE</h2>
+                    <p class="crawler-stage-sub" id="crawler-summary-sub">The dungeon is silent.</p>
+                    <div class="crawler-summary-grid" id="crawler-summary-grid"></div>
+                    <h3 class="crawler-summary-section-title">FINAL DECK</h3>
+                    <div class="crawler-summary-deck" id="crawler-summary-deck"></div>
+                    <h3 class="crawler-summary-section-title">RELICS</h3>
+                    <div class="crawler-summary-relics" id="crawler-summary-relics"></div>
+                    <div class="crawler-summary-meta" id="crawler-summary-meta"></div>
+                    <button class="crawler-primary-btn" id="crawler-summary-return">RETURN TO MENU</button>
+                </div>
+            </div>
+
+            <div id="crawler-deck-modal" class="crawler-deck-modal hidden">
+                <div class="crawler-deck-modal-inner">
+                    <h3 class="crawler-deck-modal-title">YOUR DECK</h3>
+                    <div class="crawler-deck-modal-list" id="crawler-deck-modal-list"></div>
+                    <button class="crawler-secondary-btn" id="crawler-deck-modal-close">CLOSE</button>
+                </div>
+            </div>
+
+            <div id="crawler-tooltip" class="crawler-tooltip hidden" aria-hidden="true">
+                <div class="crawler-tooltip-title" id="crawler-tooltip-title"></div>
+                <div class="crawler-tooltip-text" id="crawler-tooltip-text"></div>
             </div>
         </div>
 

@@ -220,6 +220,125 @@ class AudioSystem {
     }
 
     /* -----------------------------------------------------------------
+     * Crawler Mode SFX
+     *
+     * Tuned to match the survivor-mode presets above (same vol scale,
+     * same throttling pattern where appropriate). All routed through
+     * the shared sfxGain bus so the global sfx slider controls them.
+     * ----------------------------------------------------------------- */
+
+    crawlerCardPlay() {
+        this.noise(0.08, { filter: 'highpass', freq: 1800, vol: 0.10, decay: 8 });
+        this.note(720, 0.06, { type: 'triangle', vol: 0.10, bend: 1.1 });
+    }
+
+    crawlerCardDraw() {
+        this.noise(0.05, { filter: 'highpass', freq: 1400, vol: 0.06, decay: 12 });
+    }
+
+    crawlerAttackHit() {
+        const now = performance.now();
+        if (now - (this._lastCrawlerHit || 0) < 25) return;
+        this._lastCrawlerHit = now;
+        this.noise(0.10, { filter: 'highpass', freq: 900, vol: 0.16, decay: 8 });
+        this.note(180, 0.10, { type: 'sawtooth', vol: 0.16, bend: 0.5 });
+    }
+
+    crawlerEnemyAttack() {
+        const now = performance.now();
+        if (now - (this._lastCrawlerEnemyHit || 0) < 40) return;
+        this._lastCrawlerEnemyHit = now;
+        this.noise(0.18, { filter: 'lowpass', freq: 320, vol: 0.30, decay: 4 });
+        this.note(110, 0.10, { type: 'sawtooth', vol: 0.16, bend: 0.5 });
+    }
+
+    crawlerBlockGain() {
+        this.note(660, 0.07, { type: 'square', vol: 0.10, bend: 0.9 });
+        this.note(990, 0.10, { type: 'square', vol: 0.08, delay: 0.04, bend: 0.6 });
+    }
+
+    crawlerVulnApply() {
+        this.note(140, 0.18, { type: 'sawtooth', vol: 0.14, bend: 0.55 });
+        this.note(180, 0.14, { type: 'sine',     vol: 0.10, delay: 0.06 });
+    }
+
+    crawlerEnergyRefill() {
+        this.note(880, 0.08, { type: 'triangle', vol: 0.10 });
+        this.note(1320, 0.10, { type: 'triangle', vol: 0.10, delay: 0.05 });
+    }
+
+    crawlerCombatWin() {
+        // Short uplift: I-V-I quick chord
+        this.note(523.25, 0.16, { type: 'triangle', vol: 0.16 });
+        this.note(659.25, 0.18, { type: 'triangle', vol: 0.16, delay: 0.07 });
+        this.note(783.99, 0.22, { type: 'triangle', vol: 0.18, delay: 0.14 });
+    }
+
+    crawlerRunVictory() {
+        // Big fanfare: quintuple ascending then sustained chord
+        const rise = [392.0, 523.25, 659.25, 783.99, 987.77];
+        rise.forEach((f, i) => this.note(f, 0.20, { type: 'sawtooth', vol: 0.20, delay: i * 0.10 }));
+        // Sustained C-E-G chord on top
+        const chord = [523.25, 659.25, 783.99];
+        chord.forEach((f) => this.note(f, 0.55, { type: 'triangle', vol: 0.20, delay: 0.55 }));
+    }
+
+    crawlerRunDefeat() {
+        // Slower, lower descending tones than survivor-mode death
+        const notes = [220.00, 207.65, 196.00, 184.99];
+        notes.forEach((f, i) => this.note(f, 0.45, { type: 'sawtooth', vol: 0.24, bend: 0.85, delay: i * 0.20 }));
+        this.noise(0.5, { filter: 'lowpass', freq: 240, vol: 0.30, decay: 2, delay: 0.3 });
+    }
+
+    crawlerMapReveal() {
+        // Soft ascending arpeggio when the map is revealed
+        const notes = [440.0, 554.37, 659.25, 880.0];
+        notes.forEach((f, i) => this.note(f, 0.18, { type: 'triangle', vol: 0.12, delay: i * 0.06 }));
+    }
+
+    crawlerNodeSelect() {
+        // Slightly warmer than uiClick for the bigger commit-to-a-node moment
+        this.note(700, 0.06, { type: 'square', vol: 0.10, bend: 1.1 });
+        this.note(1050, 0.07, { type: 'triangle', vol: 0.08, delay: 0.04 });
+    }
+
+    crawlerEliteRoar() {
+        // Low rumble + growl
+        this.noise(0.55, { filter: 'lowpass', freq: 180, vol: 0.40, decay: 1.6 });
+        this.note(70,  0.50, { type: 'sawtooth', vol: 0.20, bend: 0.6 });
+        this.note(95,  0.40, { type: 'sawtooth', vol: 0.16, delay: 0.10 });
+    }
+
+    crawlerBossEntry() {
+        // Deep horn: re-uses bossWarning's vibe but harmonized
+        this.noise(0.6, { filter: 'lowpass', freq: 220, vol: 0.5, decay: 1.5 });
+        this.note(55,  0.7, { type: 'sawtooth', vol: 0.20, delay: 0.20 });
+        this.note(82.4, 0.5, { type: 'sawtooth', vol: 0.16, delay: 0.40 });
+    }
+
+    crawlerRestHeal() {
+        // Warm bell + breath
+        this.note(523.25, 0.30, { type: 'triangle', vol: 0.18 });
+        this.note(659.25, 0.40, { type: 'triangle', vol: 0.16, delay: 0.10 });
+        this.noise(0.30, { filter: 'lowpass', freq: 800, vol: 0.06, decay: 4, delay: 0.05 });
+    }
+
+    crawlerCardUpgrade() {
+        // Bright sparkle
+        this.note(880,  0.10, { type: 'triangle', vol: 0.16 });
+        this.note(1175, 0.12, { type: 'triangle', vol: 0.14, delay: 0.06 });
+        this.note(1480, 0.18, { type: 'triangle', vol: 0.14, delay: 0.12 });
+        this.noise(0.18, { filter: 'highpass', freq: 4000, vol: 0.06, decay: 8, delay: 0.04 });
+    }
+
+    crawlerRelicGet() {
+        // Pickup with bell tail
+        this.note(440, 0.10, { type: 'triangle', vol: 0.18 });
+        this.note(660, 0.16, { type: 'triangle', vol: 0.18, delay: 0.05 });
+        this.note(880, 0.30, { type: 'sine',     vol: 0.12, delay: 0.12 });
+    }
+
+    /* -----------------------------------------------------------------
      * Music looper
      *
      * Uses a "look-ahead scheduler" pattern: every 60ms we look at the

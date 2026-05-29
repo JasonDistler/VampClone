@@ -108,6 +108,7 @@ class HudOverlay {
         this.btnStart = document.getElementById('btn-start');
         this.btnSettings = document.getElementById('btn-settings');
         this.btnMeta = document.getElementById('btn-meta');
+        this.btnCrawler = document.getElementById('btn-crawler');
         this.metaSummary = document.getElementById('meta-summary');
 
         this.metaModal = document.getElementById('meta-modal');
@@ -513,6 +514,7 @@ class HudOverlay {
         this.mainMenu.classList.remove('hidden');
 
         if (this.btnStart) this.btnStart.onclick = () => handlers.onStart && handlers.onStart();
+        if (this.btnCrawler) this.btnCrawler.onclick = () => handlers.onCrawler && handlers.onCrawler();
         if (this.btnSettings) this.btnSettings.onclick = () => this.showSettings();
         if (this.btnMeta) this.btnMeta.onclick = () => this.showMetaModal();
 
@@ -520,9 +522,10 @@ class HudOverlay {
         // returning players see their progress at a glance.
         this._refreshMetaSummary();
 
-        const items = [this.btnStart, this.btnMeta, this.btnSettings].filter(Boolean);
+        const items = [this.btnStart, this.btnCrawler, this.btnMeta, this.btnSettings].filter(Boolean);
         const fns = [
             () => handlers.onStart && handlers.onStart(),
+            () => handlers.onCrawler && handlers.onCrawler(),
             () => this.showMetaModal(),
             () => this.showSettings()
         ];
