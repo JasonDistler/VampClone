@@ -231,7 +231,31 @@ const noOpen = args.includes('--no-open');
 const localhostOnly = args.includes('--localhost') || args.includes('--local-only');
 const HOST = localhostOnly ? '127.0.0.1' : '0.0.0.0';
 
-const port = await findFreePort(HOST);
+/*
+ * `--port N` (or `--port=N`) pins the server to an explicit port and
+ * skips the probe. Used by the public-tunnel launcher mode in
+ * start.bat: the tunnel client (npx localtunnel) needs to know exactly
+ * which port to forward to, so the launcher passes `--port 8765` and
+ * the server is expected to either bind there or fail loudly. We do
+ * NOT fall back to a probed port when the flag is present — silently
+ * choosing a different port would leave the tunnel pointing at
+ * nothing.
+ */
+function parsePortFlag(argv) {
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a.startsWith('--port=')) {
+            const n = parseInt(a.slice('--port='.length), 10);
+            if (Number.isFinite(n) && n >= 0 && n <= 65535) return n;
+        } else if (a === '--port' && i + 1 < argv.length) {
+            const n = parseInt(argv[i + 1], 10);
+            if (Number.isFinite(n) && n >= 0 && n <= 65535) return n;
+        }
+    }
+    return null;
+}
+const explicitPort = parsePortFlag(args);
+const port = explicitPort != null ? explicitPort : await findFreePort(HOST);
 
 const server = http.createServer(serve);
 
